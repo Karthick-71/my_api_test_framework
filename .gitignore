@@ -1,0 +1,210 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+myapipy/
+env/
+ENV/
+.env
+.venv
+.myapipy
+env.bak/
+venv.bak/
+myapipy.bak/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.history/
+
+# Logs
+*.log
+logs/
+log/
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Excel temporary files
+~$*.xls*
+# *.xlsx#
+
+# Local configuration
+config.local.py
+local_settings.py
+
+# Database
+*.db
+*.sqlite3
+
+# Ignore all files in the column_validation_temp_test_files directory
+temp_test_files/
+
+# Block all files except .py and .md files
+*
+!*/
+!*.py
+!*.md
+!.gitignore
+
+# Block all history files
+.history/
+*history*
+*.history
+.history
+history/
+
+# Block all package files
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.tgz
+*.tar.gz
+*.zip
+*.rar
+*.7z
+*.deb
+*.rpm
+*.msi
+*.exe
+*.dmg
+*.pkg
+*.app
+*.ipa
+*.apk
+*.whl
+*.egg
+*.egg-info/
+dist/
+build/
+node_modules/
+vendor/
+bower_components/
+
+# Additional unwanted files
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# API testing specific
+test_results/
+test_output/
+reports/
+screenshots/
+*.har
+*.json.bak
+
+# Environment and secrets
+.env*
+!.env.example
+secrets.json
+credentials.json
+*.pem
+*.key
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Backup files
+*.orig
+*.rej
+*.old
+
+# System files
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Additional unwanted file types
+*.csv
+*.xlsx
+*.xls
+*.doc
+*.docx
+*.pdf
+*.txt
+*.json
+*.xml
+*.yaml
+*.yml
+*.ini
+*.cfg
+*.conf
+*.config
+*.properties
+*.env
+*.log
+*.out
+*.err
+*.pid
+*.lock
+*.pid
+*.sock
+*.socket
+*.fifo
+*.pipe
+
+
