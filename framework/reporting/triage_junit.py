@@ -13,6 +13,10 @@ This plugin writes a second JUnit file that fixes both:
     name     = "TC-1001 'Create order with valid payload'"  (id from @pytest.mark.tc)
     failure  = first line is the exception message, then "at file:line"
 
+Only tests carrying @pytest.mark.tc are written. The history tracks test
+*cases* (the API behaviour a TC id stands for), not the framework's own unit
+tests. Those still appear in the normal --junitxml and HTML reports.
+
 Enable it with:  pytest --triage-junit reports/junit-triage.xml
 """
 
@@ -61,24 +65,21 @@ def _clean_title(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("'", "’").replace('"', "’")).strip()
 
 
-def _fallback_id(item) -> str:
-    return item.nodeid.split("::", 1)[-1]
-
-
 class TriageJUnitWriter:
     def __init__(self, path: Path):
         self.path = path
         self.cases: dict[str, _Case] = {}
+        self.unmarked = 0
 
     @pytest.hookimpl(trylast=True)
     def pytest_collection_modifyitems(self, items):
         for item in items:
             marker = item.get_closest_marker(MARKER)
-            if marker and marker.args:
-                tc_id = str(marker.args[0])
-                title = str(marker.args[1]) if len(marker.args) > 1 else item.name
-            else:
-                tc_id, title = _fallback_id(item), (item.function.__doc__ or item.name).strip().splitlines()[0]
+            if not (marker and marker.args):
+                self.unmarked += 1
+                continue
+            tc_id = str(marker.args[0])
+            title = str(marker.args[1]) if len(marker.args) > 1 else item.name
             self.cases[item.nodeid] = _Case(tc_id, _clean_title(title), item.location[0])
 
     def pytest_runtest_logreport(self, report):
@@ -137,4 +138,6 @@ class TriageJUnitWriter:
         self.path.write_text("\n".join(lines), encoding="utf-8")
 
     def pytest_terminal_summary(self, terminalreporter):
-        terminalreporter.write_sep("-", f"triage junit: {self.path}")
+        terminalreporter.write_sep(
+            "-", f"triage junit: {self.path} ({len(self.cases)} test cases, {self.unmarked} unmarked tests not tracked)"
+        )

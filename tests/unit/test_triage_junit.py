@@ -6,7 +6,7 @@ import pytest
 
 pytest_plugins = ["pytester"]
 
-SAMPLE = '''
+SAMPLE = """
 import pytest
 
 @pytest.mark.tc("TC-1", "Passes")
@@ -35,8 +35,8 @@ def test_setup_error(broken):
     pass
 
 def test_no_marker():
-    """Docstring becomes the title."""
-'''
+    pass
+"""
 
 
 @pytest.fixture
@@ -63,9 +63,9 @@ def test_failure_first_line_is_the_message_not_source(run):
 def test_setup_errors_and_skips_are_recorded(run):
     assert "setup error: RuntimeError: database unavailable" in run
     assert '<skipped message=""/>' in run
-    assert 'tests="6" failures="3" skipped="1"' in run
+    assert 'tests="5" failures="3" skipped="1"' in run
 
 
 @pytest.mark.unit
-def test_unmarked_test_falls_back_to_name_and_docstring(run):
-    assert "test_no_marker 'Docstring becomes the title.'" in run
+def test_tests_without_a_tc_marker_are_not_tracked(run):
+    assert "test_no_marker" not in run
