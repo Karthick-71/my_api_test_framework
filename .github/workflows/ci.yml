@@ -1,0 +1,118 @@
+name: API tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "30 3 * * *" # daily 09:00 IST, so the history shows drift even without commits
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Cross-build history report, run straight from its repo and pinned to a commit.
+  # https://github.com/ParthiCM/playwright-test-history (MIT, Parthiban Murugan)
+  TRIAGE_TOOL_REPO: ParthiCM/playwright-test-history
+  TRIAGE_TOOL_SHA: 17fc152dd1b48532afe0451e6ab3303e41c53b65
+
+jobs:
+  test:
+    name: pytest (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run tests
+        id: pytest
+        run: pytest
+        continue-on-error: true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-py${{ matrix.python }}
+          path: reports/
+          retention-days: 30
+
+      - name: Fail the job if tests failed
+        if: steps.pytest.outcome == 'failure'
+        run: exit 1
+
+  publish:
+    name: history report + GitHub Pages
+    needs: test
+    # Record every main-branch run, green or red: a history of only green builds is not a history.
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: test-history # one writer at a time for the history branch
+      cancel-in-progress: false
+    permissions:
+      contents: write # push the history store to the test-history branch
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: reports-py3.12
+          path: reports
+
+      - name: Fetch history tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TRIAGE_TOOL_REPO }}
+          ref: ${{ env.TRIAGE_TOOL_SHA }}
+          path: .triage-tool
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Record this build and render the history report
+        run: ci/update_history.sh
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRANCH_NAME: ${{ github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build site
+        run: python ci/build_site.py --reports reports --history site/history --out site
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,15 @@
+# Test framework
+pytest>=8.2,<9
+pytest-html>=4.1,<5
+requests>=2.31,<3
+jsonschema>=4.21,<5
+pandas>=2.0,<3
+openpyxl>=3.1,<4
+python-dotenv>=1.0,<2
+
+# System under test (Orders API)
+fastapi>=0.110,<1
+uvicorn>=0.29,<1
+
+# Lint
+ruff>=0.5
