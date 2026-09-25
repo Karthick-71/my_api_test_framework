@@ -48,6 +48,28 @@ as **one cause**. In a simulated broken build (rotated API key), 22 failing test
 The history store is one small JSON file per build on the [`test-history`](../../tree/test-history) branch.
 It lives outside any single workflow run, so it outlives artifact expiry.
 
+## Fault-injection runs
+
+Some builds in the history are **fault-injection runs**: real CI runs where known defects are deliberately
+switched on in the API under test, to show the suite catching them and the history report tracing them.
+They are labelled in the report as `main · faults: <names>`, and the landing page says so.
+
+| Fault | Defect it switches on | Caught by |
+|---|---|---|
+| `no_qty_limit` | quantity above 100 accepted | TC-1007 |
+| `tax_on_total` | 18% added to the order total | TC-3002 |
+| `slow_products` | `GET /api/products` takes about a second | TC-5001 |
+| `users_500` | `GET /api/users/{id}` returns 500 | TC-2003, TC-2004 |
+| `delete_not_idempotent` | deleting a missing order returns 200 | TC-3003 |
+
+To start one, go to **Actions → API tests → Run workflow** and enter the faults, or run:
+
+```bash
+gh workflow run ci.yml -f faults=users_500,slow_products
+```
+
+Faults are off unless `ORDERS_FAULTS` is set, and an unknown fault name stops the API from starting.
+
 ## Project structure
 
 ```text

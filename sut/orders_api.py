@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import time
 from contextlib import asynccontextmanager
 from enum import Enum
 from typing import Optional
@@ -24,6 +25,22 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 API_KEY = os.getenv("ORDERS_API_KEY", "local-dev-key")
 DB_PATH = os.getenv("ORDERS_DB", "orders.db")
+
+# ---------------- Fault injection ----------------
+# Off by default. ORDERS_FAULTS=name,name switches on known defects so CI can
+# show how the suite and the history report catch them (see README).
+KNOWN_FAULTS = {
+    "no_qty_limit": "quantity above 100 is accepted",
+    "tax_on_total": "18% is added to the order total",
+    "slow_products": "GET /api/products takes about a second",
+    "users_500": "GET /api/users/{id} returns 500",
+    "delete_not_idempotent": "deleting a missing order returns 200",
+}
+FAULTS = {f.strip() for f in os.getenv("ORDERS_FAULTS", "").split(",") if f.strip()}
+_unknown = FAULTS - KNOWN_FAULTS.keys()
+if _unknown:
+    raise ValueError(f"Unknown ORDERS_FAULTS: {', '.join(sorted(_unknown))}. Known: {', '.join(KNOWN_FAULTS)}")
+MAX_QUANTITY = 1_000_000 if "no_qty_limit" in FAULTS else 100
 
 
 # ---------------- Database ----------------
@@ -100,7 +117,7 @@ class Delivery(BaseModel):
 class OrderIn(BaseModel):
     user_id: int
     product_id: int
-    quantity: int = Field(ge=1, le=100)
+    quantity: int = Field(ge=1, le=MAX_QUANTITY)
     payment_method: PaymentMethod
     delivery: Delivery
 
@@ -127,11 +144,16 @@ def order_row(row: sqlite3.Row) -> dict:
 # ---------------- Endpoints ----------------
 @app.get("/health")
 def health():
-    return ok(200, "healthy", {"service": "orders-api", "version": app.version})
+    data = {"service": "orders-api", "version": app.version}
+    if FAULTS:
+        data["faults"] = sorted(FAULTS)
+    return ok(200, "healthy", data)
 
 
 @app.get("/api/products", dependencies=[Depends(require_api_key)])
 def list_products():
+    if "slow_products" in FAULTS:
+        time.sleep(1.0)
     with connect() as conn:
         rows = conn.execute("SELECT product_id, name, price FROM products").fetchall()
     return ok(200, "Products fetched", [dict(r) for r in rows])
@@ -139,6 +161,8 @@ def list_products():
 
 @app.get("/api/users/{user_id}", dependencies=[Depends(require_api_key)])
 def get_user(user_id: int):
+    if "users_500" in FAULTS:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     with connect() as conn:
         row = conn.execute("SELECT user_id, name, role FROM users WHERE user_id = ?", (user_id,)).fetchone()
     if row is None:
@@ -181,7 +205,7 @@ def create_order(order: OrderIn):
                 order.payment_method.value,
                 order.delivery.address,
                 order.delivery.pincode,
-                product["price"] * order.quantity,
+                product["price"] * order.quantity * (1.18 if "tax_on_total" in FAULTS else 1),
             ),
         )
         row = conn.execute("SELECT * FROM orders WHERE order_id = ?", (cur.lastrowid,)).fetchone()
@@ -192,7 +216,7 @@ def create_order(order: OrderIn):
 def delete_order(order_id: int):
     with connect() as conn:
         cur = conn.execute("DELETE FROM orders WHERE order_id = ?", (order_id,))
-    if cur.rowcount == 0:
+    if cur.rowcount == 0 and "delete_not_idempotent" not in FAULTS:
         raise HTTPException(status_code=404, detail="Order not found")
     return ok(200, "Order deleted", {"order_id": order_id})
 

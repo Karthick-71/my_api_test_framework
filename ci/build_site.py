@@ -28,12 +28,18 @@ def totals(junit: Path) -> dict:
     return out
 
 
-def page(t: dict, build: str, build_url: str) -> str:
+def page(t: dict, build: str, build_url: str, faults: str = "") -> str:
     failed = t["failures"] + t["errors"]
     passed = t["tests"] - failed - t["skipped"]
     ok = failed == 0 and t["tests"] > 0
     stamp = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
     status = "All tests passed" if ok else f"{failed} failing"
+    fault_note = (
+        f'<p class="note">Fault-injection run: defects deliberately switched on in the API under test '
+        f"(<code>{html.escape(faults)}</code>) to show the suite catching them.</p>"
+        if faults
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>API test reports</title>
@@ -54,12 +60,13 @@ a.card {{ display:block; background:var(--card); border:1px solid var(--line); b
   margin-bottom:12px; color:inherit; text-decoration:none; }}
 a.card:hover {{ border-color:var(--ok); }} a.card b {{ display:block; font-size:18px; }}
 a.card span {{ color:var(--mute); font-size:14px; }}
+.note {{ margin:-8px 0 24px; padding:10px 14px; border-radius:10px; border:1px dashed var(--line); color:var(--ink); }}
 footer {{ margin-top:28px; font-size:13px; color:var(--mute); }} footer a {{ color:inherit; }}
 @media (max-width:560px) {{ .grid {{ grid-template-columns:repeat(2,1fr); }} }}
 </style></head><body><main>
 <h1>API test reports</h1>
 <p>Pytest suite for the Orders API · build #{html.escape(build)} · {stamp}</p>
-<span class="status">{status}</span>
+<span class="status">{status}</span>{fault_note}
 <div class="grid">
   <div><b>{t["tests"]}</b><span>tests</span></div>
   <div><b>{passed}</b><span>passed</span></div>
@@ -89,7 +96,9 @@ def main() -> None:
         shutil.copy(report, args.out / "report.html")
     build = os.getenv("BUILD_NUMBER", "local")
     build_url = os.getenv("BUILD_URL", "#")
-    (args.out / "index.html").write_text(page(totals(args.reports / "junit.xml"), build, build_url), encoding="utf-8")
+    (args.out / "index.html").write_text(
+        page(totals(args.reports / "junit.xml"), build, build_url, os.getenv("FAULTS", "")), encoding="utf-8"
+    )
     (args.out / ".nojekyll").write_text("")
     print(f"site written to {args.out}")
 

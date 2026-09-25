@@ -7,6 +7,13 @@ on:
   schedule:
     - cron: "30 3 * * *" # daily 09:00 IST, so the history shows drift even without commits
   workflow_dispatch:
+    inputs:
+      faults:
+        description: >-
+          Fault-injection run: comma-separated defects to switch on in the Orders API
+          (no_qty_limit, tax_on_total, slow_products, users_500, delete_not_idempotent). Empty = normal run.
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -16,6 +23,7 @@ env:
   # https://github.com/ParthiCM/playwright-test-history (MIT, Parthiban Murugan)
   TRIAGE_TOOL_REPO: ParthiCM/playwright-test-history
   TRIAGE_TOOL_SHA: 17fc152dd1b48532afe0451e6ab3303e41c53b65
+  ORDERS_FAULTS: ${{ inputs.faults }}
 
 jobs:
   test:
@@ -98,7 +106,8 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
           BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BRANCH_NAME: ${{ github.ref_name }}
+          # Fault-injection runs are labelled in the report so nobody reads them as real regressions.
+          BRANCH_NAME: ${{ inputs.faults && format('{0} · faults: {1}', github.ref_name, inputs.faults) || github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
@@ -107,6 +116,7 @@ jobs:
       - name: Build site
         run: python ci/build_site.py --reports reports --history site/history --out site
         env:
+          FAULTS: ${{ inputs.faults }}
           BUILD_NUMBER: ${{ github.run_number }}
           BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
