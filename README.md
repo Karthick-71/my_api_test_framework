@@ -129,8 +129,8 @@ Mirror the change in the script so the diff stays reviewable.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request, and daily at 09:00 IST so drift shows up
-even without commits:
+`.github/workflows/ci.yml` runs on every push to main and every pull request, and can be started by hand
+from the Actions tab:
 
 1. **Lint:** ruff check and ruff format.
 2. **Test:** Pytest on Python 3.9 and 3.12, with reports uploaded as artifacts.

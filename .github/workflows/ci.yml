@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: "30 3 * * *" # daily 09:00 IST, so the history shows drift even without commits
   workflow_dispatch:
     inputs:
       faults:
